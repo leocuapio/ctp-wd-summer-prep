@@ -2,6 +2,8 @@ console.log("test")
 
 let habits = JSON.parse(localStorage.getItem('habits') || '[]');
 
+let completed_habits = JSON.parse(localStorage.getItem('completed_habits') || '[]')
+
 const form = document.getElementById('habit_form')
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -34,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
         savedHabits()
         console.log(habits)
         renderHabits(habits)
+        renderlongeststreak(habits);
         form.reset()
         const modal = bootstrap.Modal.getInstance(document.getElementById('habitModal'))
         modal.hide()
@@ -79,11 +82,16 @@ document.getElementById("deleteBtn").addEventListener("click", () => {
         habits = habits.filter(h => h.name !== Habit_To_Del.trim())
         savedHabits()
         renderHabits(habits)
+        renderlongeststreak(habits);
     }
 })
 
 function savedHabits() {
     localStorage.setItem('habits', JSON.stringify(habits))
+}
+
+function save_completed_habits() {
+    localStorage.setItem('completed_habits', JSON.stringify(completed_habits))
 }
 
 // document.addEventListener('DOMContentLoaded', () => {
@@ -104,17 +112,31 @@ document.addEventListener("DOMContentLoaded", () => {
             const hab = habits.find(h => h.id === id);
             if (hab) {
                 const today = new Date().toISOString().split("T")[0];
-                if (hab.history.includes(today)) {
-                    alert("You already completed this habit today!");
-                    return;
-                }
+                // if (hab.history.includes(today)) {
+                //     alert("You already completed this habit today!");
+                //     return;
+                // }
                 hab.history.push(today);
                 hab.currentStreak += 1;
                 if (hab.currentStreak >= hab.targetStreak) {
                     hab.status = "Completed"
                 };
+                setTimeout(() => {
+                    if (hab.status === "Completed") {
+                        if (!completed_habits.some(h => h.id === hab.id)) {
+                            completed_habits.push(hab);
+                        }
+
+                        save_completed_habits();
+                        rendercompletedhabits(completed_habits);
+                        habits = habits.filter(h => h !== hab);
+                        savedHabits()
+                        renderHabits(habits)
+                    }
+                }, 1000); 
                 savedHabits();
                 renderHabits(habits);
+                renderlongeststreak(habits);
             }
         }
     });
@@ -125,6 +147,7 @@ document.addEventListener("DOMContentLoaded", () => {
             habits = habits.filter(h => h.id !== id)
             savedHabits()
             renderHabits(habits)
+            renderlongeststreak(habits);
         }
     });
 
@@ -145,12 +168,26 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
     });
+
+    document.addEventListener("click", (event) => {
+        if (event.target.classList.contains("reset_completed")) {
+            completed_habits = [];
+            save_completed_habits();
+            rendercompletedhabits(completed_habits);
+        }
+    });
 });
 
 const renderlongeststreak = (habits) => { 
-    const streaks = Object.values(habits).map(h => h.currentStreak)
-    const maxstreak = Math.max(...streaks)
+
+    let maxstreak = 0;
+
+    if (habits.length > 0) {
+        maxstreak = Math.max(...habits.map(h => h.currentStreak));
+    }
+
     const largest_streak = document.getElementById("longest_streak")
+    largest_streak.innerHTML = ""; // clear previous
     const lol = document.createElement('div')
     lol.innerHTML = `
             <p>Longest Streak: ${maxstreak}</p>
@@ -158,3 +195,16 @@ const renderlongeststreak = (habits) => {
         largest_streak.appendChild(lol);
 };
 renderlongeststreak(habits);
+
+
+const rendercompletedhabits = (completed_habits) => {
+    const completedhabitList = document.getElementById('completed_habits')
+    completedhabitList.innerHTML = ''; 
+    for (let i = 0; i < completed_habits.length; i++) {
+        const habit = completed_habits[i]
+        const li = document.createElement('li')
+        li.textContent = `${habit.name} Target Streak: ${habit.targetStreak}`
+        completedhabitList.appendChild(li)
+    }
+}
+rendercompletedhabits(completed_habits)
